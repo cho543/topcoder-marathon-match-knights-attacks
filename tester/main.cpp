@@ -1,5 +1,5 @@
 // C++11
-#include "KnightsAttacks.hpp"
+#include "../KnightsAttacks.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <string>
