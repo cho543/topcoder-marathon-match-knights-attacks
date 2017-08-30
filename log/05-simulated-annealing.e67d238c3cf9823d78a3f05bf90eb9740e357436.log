@@ -1,0 +1,11 @@
+for seed in `seq 10` ; do java -jar tester/tester.jar -exec ./a.out -seed $seed ; done
+Score = 23.0
+Score = 598.0
+Score = 90186.0
+Score = 3607.0
+Score = 5180.0
+Score = 21089.0
+Score = 23593.0
+Score = 63583.0
+Score = 43980.0
+Score = 25020.0

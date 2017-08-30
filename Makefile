@@ -13,8 +13,8 @@ a.out: tester/main.cpp ${PROBLEM}.hpp
 	${CXX} ${CXXFLAGS} -g -DLOCAL $<
 a.out.visualize: tester/main.cpp ${PROBLEM}.hpp
 	${CXX} ${CXXFLAGS} -g -DLOCAL $< -o $@ -DVISUALIZE
-test: a.out
-	cd tester ; java -jar tester.jar -exec ../a.out -seed ${SEED} -vis
+test: a.out.visualize
+	cd tester ; java -jar tester.jar -exec ../a.out.visualize -seed ${SEED} -vis
 score: a.out
 	for seed in `seq 10` ; do java -jar tester/tester.jar -exec ./a.out -seed $$seed ; done
 case/%.in:
