@@ -42,8 +42,6 @@ default_random_engine gen;
 
 const int knight_dy[] = { -1, -2, -2, -1, 1, 2, 2, 1 };
 const int knight_dx[] = { 2, 1, -1, -2, -2, -1, 1, 2 };
-const int knight_2dy[] = { 0, 2, 3, 4, 4, 4, 3, 2, 0, -2, -3, -4, -4, -4, -3, -2 };
-const int knight_2dx[] = { 4, 4, 3, 2, 0, -2, -3, -4, -4, -4, -3, -2, 0, 2, 3, 4 };
 constexpr int MAX_S = 500;
 int s;
 char board[MAX_S * MAX_S];
@@ -107,59 +105,18 @@ fprintf(stderr, "t = %.2f: iteration = %d: force = %d\n", t, iteration, force);
             break;
         }
         temp = (1 - t);
-        if (bernoulli_distribution(0.3)(gen)) {
-            repeat (y, s) {
-                repeat (x, s) {
-                    int delta = get_delta(y, x);
-                    if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
-force += (delta > 0);
-                        flip(y, x);
-                        if (current_score < best_score) {
-                            copy(knight, knight + sq_s, result.begin());
-                            best_score = current_score;
-#ifdef VISUALIZE
-fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
-#endif
-                        }
-                    }
-                }
-            }
-        } else {
-            array<char, 8> indices;
-            iota(whole(indices), 0);
-            repeat (z, 50 * s) {
-                int y = uniform_int_distribution<int>(0, s - 1)(gen);
-                int x = uniform_int_distribution<int>(0, s - 1)(gen);
-                shuffle(whole(indices), gen);
-                vector<pair<int, int> > flipped;
-                int placed = 0;
-                for (int i : indices) {
-                    int ny = y + knight_2dy[i];
-                    int nx = x + knight_2dx[i];
-                    if (not is_on_field(ny, nx)) continue;
-                    if ((placed < board[y * s + x]) != bool(knight[ny * s + nx])) {
-                        flipped.emplace_back(ny, nx);
-                    }
-                    if (placed < board[y * s + x]) ++ placed;
-                }
-                int previous_score = current_score;
-                for (auto p : flipped) {
-                    int ny, nx; tie(ny, nx) = p;
-                    flip(ny, nx);
-                }
-                int delta = current_score - previous_score;
+        repeat (y, s) {
+            repeat (x, s) {
+                int delta = get_delta(y, x);
                 if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
+force += (delta > 0);
+                    flip(y, x);
                     if (current_score < best_score) {
                         copy(knight, knight + sq_s, result.begin());
                         best_score = current_score;
 #ifdef VISUALIZE
 fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
 #endif
-                    }
-                } else {
-                    for (auto p : flipped) {
-                        int ny, nx; tie(ny, nx) = p;
-                        flip(ny, nx);
                     }
                 }
             }
