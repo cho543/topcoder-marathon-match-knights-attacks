@@ -81,6 +81,7 @@ vector<char> solve(int s, vector<char> const & board) {
     int best_score = current_score;
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
     double t = 0;
+    double temp = INFINITY;
     for (ll iteration = 0; ; ++ iteration) {
         double clock_end = rdtsc();
         t = (clock_end - clock_begin) / TLE;
@@ -90,6 +91,7 @@ fprintf(stderr, "t = %.2f: iteration %d\n", t, iteration);
 #endif
             break;
         }
+        temp = (1 - t);
         repeat (y, s) {
             repeat (x, s) {
                 int delta = 0;
@@ -100,7 +102,7 @@ fprintf(stderr, "t = %.2f: iteration %d\n", t, iteration);
                     delta -= abs(board[ny * s + nx] - attacked[ny * s + nx]);
                     delta += abs(board[ny * s + nx] - (attacked[ny * s + nx] + (knight[y * s + x] ? -1 : +1)));
                 }
-                if (delta <= 0) {
+                if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
                     repeat (i, 8) {
                         int ny = y + knight_dy[i];
                         int nx = x + knight_dx[i];
