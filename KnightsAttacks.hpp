@@ -77,12 +77,12 @@ vector<char> solve(int s, vector<char> const & board) {
     int best_score = current_score;
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
     double t = 0;
-    for (int iteration = 0; ; ++ iteration) {
+    for (ll iteration = 0; ; ++ iteration) {
         if (iteration % 1000 == 0) {
             double clock_end = rdtsc();
             t = (clock_end - clock_begin) / TLE;
             if (t > 0.98) {
-#ifdef LOCAL
+#ifdef VISUALIZE
 fprintf(stderr, "t = %.2f: iteration %d\n", t, iteration);
 #endif
                 break;
@@ -110,7 +110,7 @@ fprintf(stderr, "t = %.2f: iteration %d\n", t, iteration);
             if (current_score < best_score) {
                 result = knight;
                 best_score = current_score;
-#ifdef LOCAL
+#ifdef VISUALIZE
 fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
 #endif
             }
