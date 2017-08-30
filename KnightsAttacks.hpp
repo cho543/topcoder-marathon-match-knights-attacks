@@ -125,17 +125,28 @@ fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_sc
                 }
             }
         } else {
+            array<char, 8> indices;
+            iota(whole(indices), 0);
             repeat (z, 50 * s) {
                 int y = uniform_int_distribution<int>(0, s - 1)(gen);
                 int x = uniform_int_distribution<int>(0, s - 1)(gen);
-                int i = uniform_int_distribution<int>(0, 16 - 1)(gen);
-                int ny = y + knight_2dy[i];
-                int nx = x + knight_2dx[i];
-                if (not is_on_field(ny, nx)) continue;
-                if (knight[y * s + x] == knight[ny * s + nx]) continue;
+                shuffle(whole(indices), gen);
+                vector<pair<int, int> > flipped;
+                int placed = 0;
+                for (int i : indices) {
+                    int ny = y + knight_2dy[i];
+                    int nx = x + knight_2dx[i];
+                    if (not is_on_field(ny, nx)) continue;
+                    if ((placed < board[y * s + x]) != bool(knight[ny * s + nx])) {
+                        flipped.emplace_back(ny, nx);
+                    }
+                    if (placed < board[y * s + x]) ++ placed;
+                }
                 int previous_score = current_score;
-                flip(y, x);
-                flip(ny, nx);
+                for (auto p : flipped) {
+                    int ny, nx; tie(ny, nx) = p;
+                    flip(ny, nx);
+                }
                 int delta = current_score - previous_score;
                 if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
                     if (current_score < best_score) {
@@ -146,8 +157,10 @@ fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_sc
 #endif
                     }
                 } else {
-                    flip(y, x);
-                    flip(ny, nx);
+                    for (auto p : flipped) {
+                        int ny, nx; tie(ny, nx) = p;
+                        flip(ny, nx);
+                    }
                 }
             }
         }
