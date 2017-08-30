@@ -33,6 +33,7 @@ public class KnightsAttacksVis {
         else if (seed == 3)
             S = maxS;
 
+        if (SZ == 0) SZ = 1000 / S;
         SZX = S * SZ;
         SZY = S * SZ;
 
@@ -261,11 +262,13 @@ public class KnightsAttacksVis {
             g2.setFont(new Font("Arial",Font.BOLD, SZ < 16 ? 10 : 12));
             FontMetrics fm = g2.getFontMetrics();
 
+            int border = 1;
+            if (SZ < 10) border = 0;
             for (int i = 0; i < S; ++i)
             for (int j = 0; j < S; ++j) {
                 // highlight each cell
                 g2.setColor(new Color(getColor(board[i][j], attacks[i][j])));
-                g2.fillRect(j * SZ, i * SZ, SZ - 1, SZ - 1);
+                g2.fillRect(j * SZ, i * SZ, SZ - border, SZ - border);
                 // draw placed knights (under the numbers)
                 if (placedK[i][j])
                     if (drawPic)
@@ -275,19 +278,21 @@ public class KnightsAttacksVis {
                         g2.fillOval(j * SZ + SZ / 8, i * SZ + SZ / 8, SZ * 3 / 4, SZ * 3 / 4);
                     }
                 // draw required numbers
-                ch = ("" + board[i][j]).toCharArray();
-                int h = i * SZ + SZ/2 + fm.getHeight()/2 - 2;
-                if (placedK[i][j]) {
-                    if (!drawPic) {
-                        g2.setColor(Color.WHITE);
-                        g2.drawChars(ch,0,ch.length, j * SZ + SZ/2 - fm.charWidth(ch[0])/2, h);
+                if (SZ >= 12) {
+                    ch = ("" + board[i][j]).toCharArray();
+                    int h = i * SZ + SZ/2 + fm.getHeight()/2 - 2;
+                    if (placedK[i][j]) {
+                        if (!drawPic) {
+                            g2.setColor(Color.WHITE);
+                            g2.drawChars(ch,0,ch.length, j * SZ + SZ/2 - fm.charWidth(ch[0])/2, h);
+                        } else {
+                            g2.setColor(Color.BLACK);
+                            g2.drawChars(ch,0,ch.length, j * SZ + SZ/2 + 1, h);
+                        }
                     } else {
                         g2.setColor(Color.BLACK);
-                        g2.drawChars(ch,0,ch.length, j * SZ + SZ/2 + 1, h);
+                        g2.drawChars(ch,0,ch.length, j * SZ + SZ/2 - fm.charWidth(ch[0])/2, h);
                     }
-                } else {
-                    g2.setColor(Color.BLACK);
-                    g2.drawChars(ch,0,ch.length, j * SZ + SZ/2 - fm.charWidth(ch[0])/2, h);
                 }
             }
 
@@ -343,7 +348,7 @@ public class KnightsAttacksVis {
     // ---------------------------------------------------
     public static void main(String[] args) {
         String seed = "1";
-        SZ = 12;
+        SZ = 0;
         for (int i = 0; i<args.length; i++)
         {   if (args[i].equals("-seed"))
                 seed = args[++i];
