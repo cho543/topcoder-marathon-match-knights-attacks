@@ -69,6 +69,10 @@ vector<char> solve(int s, vector<char> const & board) {
     vector<char> knight(sq_s, false);
     vector<char> attacked(sq_s);
     int current_score = 0;
+    double estimated_pk = accumulate(whole(board), 0) / (8.0 * sq_s);
+    repeat (y, s) repeat (x, s) {
+        knight[y * s + x] = bernoulli_distribution(estimated_pk)(gen);
+    }
     repeat (y, s) repeat (x, s) {
         attacked[y * s + x] = count_attacked_at(y, x, knight, s);
         current_score += abs(board[y * s + x] - attacked[y * s + x]);
@@ -78,41 +82,41 @@ vector<char> solve(int s, vector<char> const & board) {
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
     double t = 0;
     for (ll iteration = 0; ; ++ iteration) {
-        if (iteration % 1000 == 0) {
-            double clock_end = rdtsc();
-            t = (clock_end - clock_begin) / TLE;
-            if (t > 0.98) {
+        double clock_end = rdtsc();
+        t = (clock_end - clock_begin) / TLE;
+        if (t > 0.98) {
 #ifdef VISUALIZE
 fprintf(stderr, "t = %.2f: iteration %d\n", t, iteration);
 #endif
-                break;
-            }
+            break;
         }
-        int y = uniform_int_distribution<int>(0, s - 1)(gen);
-        int x = uniform_int_distribution<int>(0, s - 1)(gen);
-        int delta = 0;
-        repeat (i, 8) {
-            int ny = y + knight_dy[i];
-            int nx = x + knight_dx[i];
-            if (not is_on_field(ny, nx)) continue;
-            delta -= abs(board[ny * s + nx] - attacked[ny * s + nx]);
-            delta += abs(board[ny * s + nx] - (attacked[ny * s + nx] + (knight[y * s + x] ? -1 : +1)));
-        }
-        if (delta <= 0) {
-            repeat (i, 8) {
-                int ny = y + knight_dy[i];
-                int nx = x + knight_dx[i];
-                if (not is_on_field(ny, nx)) continue;
-                attacked[ny * s + nx] += (knight[y * s + x] ? -1 : +1);
-            }
-            knight[y * s + x] = not knight[y * s + x];
-            current_score += delta;
-            if (current_score < best_score) {
-                result = knight;
-                best_score = current_score;
+        repeat (y, s) {
+            repeat (x, s) {
+                int delta = 0;
+                repeat (i, 8) {
+                    int ny = y + knight_dy[i];
+                    int nx = x + knight_dx[i];
+                    if (not is_on_field(ny, nx)) continue;
+                    delta -= abs(board[ny * s + nx] - attacked[ny * s + nx]);
+                    delta += abs(board[ny * s + nx] - (attacked[ny * s + nx] + (knight[y * s + x] ? -1 : +1)));
+                }
+                if (delta <= 0) {
+                    repeat (i, 8) {
+                        int ny = y + knight_dy[i];
+                        int nx = x + knight_dx[i];
+                        if (not is_on_field(ny, nx)) continue;
+                        attacked[ny * s + nx] += (knight[y * s + x] ? -1 : +1);
+                    }
+                    knight[y * s + x] = not knight[y * s + x];
+                    current_score += delta;
+                    if (current_score < best_score) {
+                        result = knight;
+                        best_score = current_score;
 #ifdef VISUALIZE
 fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
 #endif
+                    }
+                }
             }
         }
     }
