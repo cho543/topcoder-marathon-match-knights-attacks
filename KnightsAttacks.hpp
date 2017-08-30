@@ -41,7 +41,7 @@ default_random_engine gen;
 
 const int knight_dy[] = { -1, -2, -2, -1, 1, 2, 2, 1 };
 const int knight_dx[] = { 2, 1, -1, -2, -2, -1, 1, 2 };
-int calculate_score_at(int y, int x, vector<char> const & knight, int s, vector<char> const & board) {
+int count_attacked_at(int y, int x, vector<char> const & knight, int s) {
     auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
     int attacked = 0;
     repeat (i, 8) {
@@ -50,25 +50,15 @@ int calculate_score_at(int y, int x, vector<char> const & knight, int s, vector<
         if (not is_on_field(ny, nx)) continue;
         attacked += bool(knight[ny * s + nx]);
     }
-    return abs(attacked - board[y * s + x]);
+    return attacked;
 }
 int calculate_score(vector<char> const & knight, int s, vector<char> const & board) {
     int result = 0;
     repeat (y, s) {
         repeat (x, s) {
-            result += calculate_score_at(y, x, knight, s, board);
+            int attacked = count_attacked_at(y, x, knight, s);
+            result += abs(attacked - board[y * s + x]);
         }
-    }
-    return result;
-}
-int calculate_score_around(int y, int x, vector<char> const & knight, int s, vector<char> const & board) {
-    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
-    int result = 0;
-    repeat (i, 8) {
-        int ny = y + knight_dy[i];
-        int nx = x + knight_dx[i];
-        if (not is_on_field(ny, nx)) continue;
-        result += calculate_score_at(ny, nx, knight, s, board);
     }
     return result;
 }
@@ -77,30 +67,53 @@ vector<char> solve(int s, vector<char> const & board) {
     double clock_begin = rdtsc();
     int sq_s = s * s;
     vector<char> knight(sq_s, false);
-    int current_score = calculate_score(knight, s, board);
+    vector<char> attacked(sq_s);
+    int current_score = 0;
+    repeat (y, s) repeat (x, s) {
+        attacked[y * s + x] = count_attacked_at(y, x, knight, s);
+        current_score += abs(board[y * s + x] - attacked[y * s + x]);
+    }
     vector<char> result = knight;
     int best_score = current_score;
+    auto is_on_field = [&](int y, int x) { return 0 <= y and y < s and 0 <= x and x < s; };
+    double t = 0;
     for (int iteration = 0; ; ++ iteration) {
         if (iteration % 1000 == 0) {
             double clock_end = rdtsc();
-            if (clock_end - clock_begin > TLE * 0.95) {
+            t = (clock_end - clock_begin) / TLE;
+            if (t > 0.98) {
+#ifdef LOCAL
+fprintf(stderr, "t = %.2f: iteration %d\n", t, iteration);
+#endif
                 break;
             }
         }
         int y = uniform_int_distribution<int>(0, s - 1)(gen);
         int x = uniform_int_distribution<int>(0, s - 1)(gen);
         int delta = 0;
-        delta -= calculate_score_around(y, x, knight, s, board);
-        knight[y * s + x] = not knight[y * s + x];
-        delta += calculate_score_around(y, x, knight, s, board);
+        repeat (i, 8) {
+            int ny = y + knight_dy[i];
+            int nx = x + knight_dx[i];
+            if (not is_on_field(ny, nx)) continue;
+            delta -= abs(board[ny * s + nx] - attacked[ny * s + nx]);
+            delta += abs(board[ny * s + nx] - (attacked[ny * s + nx] + (knight[y * s + x] ? -1 : +1)));
+        }
         if (delta <= 0) {
+            repeat (i, 8) {
+                int ny = y + knight_dy[i];
+                int nx = x + knight_dx[i];
+                if (not is_on_field(ny, nx)) continue;
+                attacked[ny * s + nx] += (knight[y * s + x] ? -1 : +1);
+            }
+            knight[y * s + x] = not knight[y * s + x];
             current_score += delta;
             if (current_score < best_score) {
                 result = knight;
                 best_score = current_score;
+#ifdef LOCAL
+fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
+#endif
             }
-        } else {
-            knight[y * s + x] = not knight[y * s + x];
         }
     }
     return knight;
