@@ -42,6 +42,8 @@ default_random_engine gen;
 
 const int knight_dy[] = { -1, -2, -2, -1, 1, 2, 2, 1 };
 const int knight_dx[] = { 2, 1, -1, -2, -2, -1, 1, 2 };
+const int knight_2dy[] = { 0, 2, 3, 4, 4, 4, 3, 2, 0, -2, -3, -4, -4, -4, -3, -2 };
+const int knight_2dx[] = { 4, 4, 3, 2, 0, -2, -3, -4, -4, -4, -3, -2, 0, 2, 3, 4 };
 constexpr int MAX_S = 500;
 int s;
 char board[MAX_S * MAX_S];
@@ -105,12 +107,37 @@ fprintf(stderr, "t = %.2f: iteration = %d: force = %d\n", t, iteration, force);
             break;
         }
         temp = (1 - t);
-        repeat (y, s) {
-            repeat (x, s) {
-                int delta = get_delta(y, x);
-                if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
+        if (bernoulli_distribution(0.3)(gen)) {
+            repeat (y, s) {
+                repeat (x, s) {
+                    int delta = get_delta(y, x);
+                    if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
 force += (delta > 0);
-                    flip(y, x);
+                        flip(y, x);
+                        if (current_score < best_score) {
+                            copy(knight, knight + sq_s, result.begin());
+                            best_score = current_score;
+#ifdef VISUALIZE
+fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
+#endif
+                        }
+                    }
+                }
+            }
+        } else {
+            repeat (z, 50 * s) {
+                int y = uniform_int_distribution<int>(0, s - 1)(gen);
+                int x = uniform_int_distribution<int>(0, s - 1)(gen);
+                int i = uniform_int_distribution<int>(0, 16 - 1)(gen);
+                int ny = y + knight_2dy[i];
+                int nx = x + knight_2dx[i];
+                if (not is_on_field(ny, nx)) continue;
+                if (knight[y * s + x] == knight[ny * s + nx]) continue;
+                int previous_score = current_score;
+                flip(y, x);
+                flip(ny, nx);
+                int delta = current_score - previous_score;
+                if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
                     if (current_score < best_score) {
                         copy(knight, knight + sq_s, result.begin());
                         best_score = current_score;
@@ -118,6 +145,9 @@ force += (delta > 0);
 fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
 #endif
                     }
+                } else {
+                    flip(y, x);
+                    flip(ny, nx);
                 }
             }
         }
