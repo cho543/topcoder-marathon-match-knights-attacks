@@ -42,6 +42,8 @@ default_random_engine gen;
 
 const int knight_dy[] = { -1, -2, -2, -1, 1, 2, 2, 1 };
 const int knight_dx[] = { 2, 1, -1, -2, -2, -1, 1, 2 };
+const int knight_2dy[] = { -1, -1, 1, 1,  -1, -3, -3, -3, -3, -1, 1, 3, 3, 3, 3, 1,  0, -4, 0, 4 };
+const int knight_2dx[] = { 1, -1, -1, 1,  3, 3, 1, -1, -3, -3, -3, -3, -1, 1, 3, 3,  4, 0, -4, 0 };
 constexpr int MAX_S = 500;
 int s;
 char board[MAX_S * MAX_S];
@@ -92,7 +94,9 @@ vector<char> solve() {
     int best_score = current_score;
     double t = 0;
     double temp = INFINITY;
+#ifdef VISUALIZE
 int force = 0;
+#endif
     for (int iteration = 0; ; ++ iteration) {
         double clock_end = rdtsc();
         t = (clock_end - clock_begin) / TLE;
@@ -103,19 +107,59 @@ fprintf(stderr, "t = %.2f: iteration = %d: force = %d\n", t, iteration, force);
             break;
         }
         temp = (1 - t);
-        repeat (y, s) {
-            repeat (x, s) {
-                int delta = get_delta(y, x);
-                if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
+#ifdef VISUALIZE
+int frc = 0;
+int flp = 0;
+#endif
+        if (iteration & 1) {
+            repeat (y, s) {
+                repeat (x, s) {
+                    int delta = get_delta(y, x);
+                    if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
+#ifdef VISUALIZE
 force += (delta > 0);
-                    flip(y, x);
+frc += (delta > 0);
+flp += 1;
+#endif
+                        flip(y, x);
+                        if (current_score < best_score) {
+                            copy(knight, knight + sq_s, result.begin());
+                            best_score = current_score;
+#ifdef VISUALIZE
+fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
+#endif
+                        }
+                    }
+                }
+            }
+#ifdef VISUALIZE
+fprintf(stderr, "t = %.2f: iteration %d: score = %d ", t, iteration, current_score);
+fprintf(stderr, "force = %d: flip = %d\n", frc, flp);
+#endif
+        } else {
+            repeat (z, s * s / 100) {
+                int y = uniform_int_distribution<int>(0, s - 1)(gen);
+                int x = uniform_int_distribution<int>(0, s - 1)(gen);
+                int i = uniform_int_distribution<int>(0, 20 - 1)(gen);
+                int ny = y + knight_2dy[i];
+                int nx = x + knight_2dx[i];
+                if (not is_on_field(ny, nx)) continue;
+                if (knight[y * s + x] == knight[ny * s + nx]) continue;
+                int previous_score = current_score;
+                flip(y, x);
+                flip(ny, nx);
+                int delta = - previous_score + current_score;
+                if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
                     if (current_score < best_score) {
                         copy(knight, knight + sq_s, result.begin());
                         best_score = current_score;
 #ifdef VISUALIZE
-fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
+fprintf(stderr, "t = %.2f: iteration %d: score = %d +\n", t, iteration, current_score);
 #endif
                     }
+                } else {
+                    flip(y, x);
+                    flip(ny, nx);
                 }
             }
         }
