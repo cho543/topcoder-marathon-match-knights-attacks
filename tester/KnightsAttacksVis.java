@@ -97,6 +97,20 @@ public class KnightsAttacksVis {
                 row[j] = (char)('0' + board[i][j]);
             boardArg[i] = new String(row);
         }
+
+        // compute the score
+        int originalScore = 0;
+        for (int i = 0; i < S; ++i)
+        for (int j = 0; j < S; ++j) {
+            int attacked = 0;
+            for (int k = 0; k < 8; ++k) {
+                int r = i + dr[k];
+                int c = j + dc[k];
+                if (r >= 0 && c >= 0 && r < S && c < S)
+                    if (originalK[r][c]) attacked += 1;
+            }
+            originalScore += Math.abs(board[i][j] - attacked);
+        }
         
         StringBuffer sb = new StringBuffer();
         sb.append("S = ").append(S).append('\n');
@@ -104,6 +118,7 @@ public class KnightsAttacksVis {
         sb.append("Probability of a cell changing = ").append(pC).append('\n');
         sb.append("Max change value = ").append(maxC).append('\n');
         sb.append("Number of cells changing completely randomly = ").append(nRand).append('\n');
+        sb.append("The score with the original placement = ").append(originalScore).append('\n');
         if (seed < 3)
             for (int i = 0; i < S; ++i)
                 sb.append(boardArg[i]).append('\n');
@@ -119,8 +134,6 @@ public class KnightsAttacksVis {
     public double runTest(String seed) {
       try {
         String test = generate(seed);
-        if (debug)
-            System.out.println(test);
 
         // call user's solution and get return
         placedK = new boolean[S][S];
@@ -179,6 +192,8 @@ public class KnightsAttacksVis {
             diff += Math.abs(board[i][j] - attacks[i][j]);
         }
 
+        if (debug)
+            System.out.println(test);
         if (vis) {
             // draw the image
             jf.setSize(SZX+10,SZY+30);
