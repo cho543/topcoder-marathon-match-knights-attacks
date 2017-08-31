@@ -75,20 +75,18 @@ int get_delta(int y, int x) {
 vector<char> solve() {
     double clock_begin = rdtsc();
     int sq_s = s * s;
-    double estimated_pk = accumulate(board, board + sq_s, 0) / (8.0 * sq_s);
+    current_score = accumulate(board, board + sq_s, 0);
+    const int knight_remaining[] = { 3, 1, 0, 2, 4, 6, 7, 5 };
     repeat (y, s) repeat (x, s) {
-        knight[y * s + x] = bernoulli_distribution(estimated_pk)(gen);
-    }
-    repeat (y, s) repeat (x, s) {
+        int required = 0;
         repeat (i, 8) {
             int ny = y + knight_dy[i];
             int nx = x + knight_dx[i];
             if (not is_on_field(ny, nx)) continue;
-            if (knight[ny * s + nx]) {
-                attacked[y * s + x] += 1;
-            }
+            if (board[ny * s + nx] - attacked[ny * s + nx] > knight_remaining[i]) required += 1;
+            if (board[ny * s + nx] - attacked[ny * s + nx] <= 0) required -= 1;
         }
-        current_score += abs(board[y * s + x] - attacked[y * s + x]);
+        if (required >= 1) flip(y, x);
     }
     vector<char> result(knight, knight + sq_s);
     int best_score = current_score;
