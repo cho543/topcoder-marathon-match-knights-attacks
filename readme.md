@@ -4,6 +4,28 @@
 -   Standings: <https://community.topcoder.com/longcontest/?module=ViewStandings&rd=16981>
 -   Submit: <https://community.topcoder.com/longcontest/?module=Submit&compid=57153&rd=16981&cd=15207>
 
+## Algorithm
+
+-   Simulated Annealing
+    -   neighborhood: choose one-point and flip
+    -   evaluation function: the original score
+
+## まとめ
+
+-   ほとんど改善できなかった
+    -   開始後すぐにとりあえず実装したやつを投げたらその時点で2位
+    -   そこからほとんど伸びず
+    -   やることなくて接戦ぽいので少しでも伸ばしたら効いていたのだろうか
+-   細かい改善
+    -   flipする点は全部順番に試す (定数倍高速)
+    -   温度調整
+    -   swapによる近傍
+-   飽和してる
+    -   なので定数倍高速化してもあまり効かず
+-   線形計画法を試した
+    -   まったくだめ
+    -   実質すでにやってたのだと思う
+
 ## 記録
 
 -   1点反転 山登り: SEED = 3 で Score = 97000 ぐらい
@@ -82,6 +104,9 @@
     -   遅い
     -   焼いてもどうにもならない
     -   だめっぽい
+    -   よく考えたら山登りの時点でかなりsimplex法っぽいことしてる
+    -   そもそも線形計画問題って最大流や最小費用流もこれに帰着できる汎用形なので、これに変換して解きやすくなることはないのかも
 -   最終提出
     -   c39a86b9f59d66bcb4939e32f6032dba0b1fe865
     -   提出時 11位
+    -   相対得点なので10位に戻ったのを見た
