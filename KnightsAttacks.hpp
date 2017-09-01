@@ -90,6 +90,26 @@ vector<double> debug_c = z;
     int h = k.size();
     int w = z.size();
     while (true) {
+/*
+double value = 0;
+repeat (y, h) if (ix[y] < debug_c.size()) {
+value += debug_c[ix[y]] * k[y];
+}
+fprintf(stderr, "value %lf\n", value);
+fprintf(stderr, "  z : ");
+repeat (x, w) {
+fprintf(stderr, "%5.1lf", z[x]);
+}
+fprintf(stderr, "\n");
+repeat (y, h) {
+fprintf(stderr, "%3d : ", ix[y]);
+repeat (x, w) {
+fprintf(stderr, "%5.1lf", m[y][x]);
+}
+fprintf(stderr, "%5.1lf\n", k[y]);
+}
+fprintf(stderr, "\n");
+*/
         // select column
         int x = min_element(whole(z)) - z.begin();
         if (z[x] > - eps) break;
@@ -100,6 +120,7 @@ vector<double> debug_c = z;
         }
         int y = min_element(whole(delta)) - delta.begin();
         if (isinf(delta[y])) break;
+// fprintf(stderr, "pivot x = %d (%lf) ; y = %d (%lf / %lf = %lf)\n", x, z[x], y, k[y], m[y][x], delta[y]);
         // eliminate
         ix[y] = x;
         double m_y_x = m[y][x];
@@ -152,7 +173,7 @@ vector<double> linsolve(vector<vector<double> > const & a, vector<double> const 
     iota(whole(ix), w);
     // two-phase method
     if (artificial) {
-fprintf(stderr, "artificial %d\n", artificial);
+// fprintf(stderr, "artificial %d\n", artificial);
         vector<double> z(w + h + artificial);  // target function
         int var = 0;
         repeat (y, h) {
@@ -218,6 +239,11 @@ void flip(int y, int x) {
     }
     knight[y * s + x] = not knight[y * s + x];
 }
+void set_knight(int y, int x, bool state) {
+    if (knight[y * s + x] != state) {
+        flip(y, x);
+    }
+}
 int get_delta(int y, int x) {
     int delta = 0;
     repeat (i, 8) {
@@ -234,41 +260,51 @@ vector<char> solve() {
     double clock_begin = rdtsc();
     int sq_s = s * s;
     current_score = accumulate(board, board + sq_s, 0);
-    vector<vector<double> > a(3 * sq_s, vector<double>(2 * sq_s));
-    vector<double> b(3 * sq_s);
-    repeat (i, sq_s) {  // relaxed binary constraints
-        a[i][i] = 1;
-        b[i] = 1;
-    }
-    repeat (y, s) repeat (x, s) {  // abs(board - knight) <= delta
-        repeat (i, 8) {
-            int ny = y + knight_dy[i];
-            int nx = x + knight_dx[i];
-            if (not is_on_field(ny, nx)) continue;
-            a[sq_s + (y * s + x) * 2    ][ny * s + nx] += 1;
-            a[sq_s + (y * s + x) * 2 + 1][ny * s + nx] -= 1;
+    constexpr int outer = 12;
+    constexpr int inner = 2;
+    for (int ly = 0; ly < s; ly += outer - inner) {
+        int ry = min(s, ly + outer);
+        int h = ry - ly;
+        for (int lx = 0; lx < s; lx += outer - inner) {
+            int rx = min(s, lx + outer);
+            int w = rx - lx;
+fprintf(stderr, "%d %d do\n", ly + h, lx + w);
+            int hw = h * w;
+            vector<vector<double> > a(3 * hw, vector<double>(2 * hw));
+            vector<double> b(3 * hw);
+            repeat (i, hw) {  // relaxed binary constraints
+                a[i][i] = 1;
+                b[i] = 1;
+            }
+            repeat (y, h) repeat (x, w) {
+                set_knight(ly + y, lx + x, false);
+            }
+            repeat (y, h) repeat (x, w) {  // abs(board - knight) <= delta
+                repeat (i, 8) {
+                    int ny = y + knight_dy[i];
+                    int nx = x + knight_dx[i];
+                    if (not (0 <= ny and ny < h and 0 <= nx and nx < w)) continue;
+                    a[hw + (y * w + x) * 2    ][ny * w + nx] += 1;
+                    a[hw + (y * w + x) * 2 + 1][ny * w + nx] -= 1;
+                }
+                a[hw + (y * w + x) * 2    ][hw + y * w + x] = -1;
+                a[hw + (y * w + x) * 2 + 1][hw + y * w + x] = -1;
+                int j = (ly + y) * s + (lx + x);
+                b[hw + (y * w + x) * 2    ] = + (board[j] - attacked[j]);
+                b[hw + (y * w + x) * 2 + 1] = - (board[j] - attacked[j]);
+            }
+            vector<double> c(2 * hw);
+            repeat_from (i, hw, 2 * hw) {  // minimize sum of delta
+                c[i] = -1;
+            }
+            vector<double> relaxed = linsolve_glpk(a, b, c);
+            repeat (y, h) repeat (x, w) {
+                set_knight(ly + y, lx + x, round(relaxed[y * w + x]));
+            }
+fprintf(stderr, "%d %d done : Score = %d\n", ly + h, lx + w, current_score);
         }
-        a[sq_s + (y * s + x) * 2    ][sq_s + y * s + x] = -1;
-        a[sq_s + (y * s + x) * 2 + 1][sq_s + y * s + x] = -1;
-        b[sq_s + (y * s + x) * 2    ] = + board[y * s + x];
-        b[sq_s + (y * s + x) * 2 + 1] = - board[y * s + x];
     }
-    vector<double> c(2 * sq_s);
-    repeat_from (i, sq_s, 2 * sq_s) {  // minimize sum of delta
-        c[i] = -1;
-    }
-    vector<double> relaxed = linsolve(a, b, c);
-repeat (y, s) {
-repeat (x, s) {
-fprintf(stderr, "%4.1lf", relaxed[y * s + x]);
-}
-fprintf(stderr, "\n");
-}
-    vector<char> result(sq_s);
-    repeat (y, s) repeat (x, s) {
-        result[y * s + x] = round(relaxed[y * s + x]);
-    }
-    return result;
+    return vector<char>(knight, knight + sq_s);
 }
 
 class KnightsAttacks { public: vector<string> placeKnights(vector<string> board); };
