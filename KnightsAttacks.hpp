@@ -106,7 +106,7 @@ fprintf(stderr, "t = %.2f: iteration = %d: force = %d\n", t, iteration, force);
 #endif
             break;
         }
-        temp = (1 - t);
+        temp = (1 - t) * 0.6;
 #ifdef VISUALIZE
 int frc = 0;
 int flp = 0;
