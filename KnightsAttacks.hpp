@@ -13,7 +13,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <glpk.h>
 #define repeat(i, n) for (int i = 0; (i) < int(n); ++(i))
 #define repeat_from(i, m, n) for (int i = (m); (i) < int(n); ++(i))
 #define repeat_reverse(i, n) for (int i = (n)-1; (i) >= 0; --(i))
@@ -30,7 +29,6 @@ const int dy[] = { -1, 1, 0, 0 };
 const int dx[] = { 0, 0, 1, -1 };
 bool is_on_field(int y, int x, int h, int w) { return 0 <= y and y < h and 0 <= x and x < w; }
 
-
 constexpr double ticks_per_sec = 2800000000;
 constexpr double ticks_per_sec_inv = 1.0 / ticks_per_sec;
 inline double rdtsc() { // in seconds
@@ -41,181 +39,6 @@ inline double rdtsc() { // in seconds
 constexpr int TLE = 10; // sec
 
 default_random_engine gen;
-
-vector<double> linsolve_glpk(vector<vector<double> > const & a, vector<double> const & b, vector<double> const & c) {
-    int preserved_term_out = glp_term_out(GLP_OFF);
-    int h = b.size();
-    int w = c.size();
-    glp_prob *lp = glp_create_prob();
-    glp_set_obj_dir(lp, GLP_MAX);
-    glp_add_cols(lp, w);
-    repeat (x, w) {
-        glp_set_col_bnds(lp, x + 1, GLP_LO, 0, INFINITY); // non-negative
-        glp_set_obj_coef(lp, x + 1, c[x]);
-    }
-    glp_add_rows(lp, h);
-    repeat (y, h) {
-        glp_set_row_bnds(lp, y + 1, GLP_UP, - INFINITY, b[y]);
-    }
-    vector<int> ia, ja;
-    vector<double> ar;
-    ia.push_back(0);
-    ja.push_back(0);
-    ar.push_back(0);  // dummy for 1-based
-    constexpr double eps = 1e-8;
-    repeat (y, h) repeat (x, w) {
-        if (abs(a[y][x]) > eps) {
-            ia.push_back(y + 1);
-            ja.push_back(x + 1);
-            ar.push_back(a[y][x]);
-        }
-    }
-    glp_load_matrix(lp, ar.size() - 1, ia.data(), ja.data(), ar.data());
-    glp_simplex(lp, NULL);
-    assert (glp_get_status(lp) == GLP_OPT);
-    vector<double> result(w);
-    repeat (x, w) {
-        result[x] = glp_get_col_prim(lp, x + 1);
-    }
-    glp_delete_prob(lp);
-    glp_free_env();
-    glp_term_out(preserved_term_out);
-    return result;
-}
-
-void linsolve_tableau(vector<double> & z, vector<vector<double> > & tableau, vector<double> & k, vector<int> & ix) {
-vector<double> debug_c = z;
-    constexpr double eps = 1e-8;
-    vector<vector<double > > & m = tableau;
-    int h = k.size();
-    int w = z.size();
-    while (true) {
-/*
-double value = 0;
-repeat (y, h) if (ix[y] < debug_c.size()) {
-value += debug_c[ix[y]] * k[y];
-}
-fprintf(stderr, "value %lf\n", value);
-fprintf(stderr, "  z : ");
-repeat (x, w) {
-fprintf(stderr, "%5.1lf", z[x]);
-}
-fprintf(stderr, "\n");
-repeat (y, h) {
-fprintf(stderr, "%3d : ", ix[y]);
-repeat (x, w) {
-fprintf(stderr, "%5.1lf", m[y][x]);
-}
-fprintf(stderr, "%5.1lf\n", k[y]);
-}
-fprintf(stderr, "\n");
-*/
-        // select column
-        int x = min_element(whole(z)) - z.begin();
-        if (z[x] > - eps) break;
-        // select row
-        vector<double> delta(h, INFINITY);
-        repeat (y, h) if (m[y][x] > + eps) {
-            delta[y] = k[y] / m[y][x];
-        }
-        int y = min_element(whole(delta)) - delta.begin();
-        if (isinf(delta[y])) break;
-// fprintf(stderr, "pivot x = %d (%lf) ; y = %d (%lf / %lf = %lf)\n", x, z[x], y, k[y], m[y][x], delta[y]);
-        // eliminate
-        ix[y] = x;
-        double m_y_x = m[y][x];
-        repeat (j, w) {
-            m[y][j] /= m_y_x;
-        }
-        k[y] /= m_y_x;
-        double z_x = z[x];
-        repeat (j, w) {
-            z[j] -= z_x * m[y][j];
-        }
-        repeat (i, h) if (i != y) {
-            double m_i_x = m[i][x];
-            repeat (j, w) {
-                m[i][j] -= m_i_x * m[y][j];
-            }
-            k[i] -= m_i_x * k[y];
-        }
-    }
-}
-
-/*
- * max : c^T x
- * sub.to. : Ax <= b
- *            x >= 0
- */
-vector<double> linsolve(vector<vector<double> > const & a, vector<double> const & b, vector<double> const & c) {
-    // prepare
-    constexpr double eps = 1e-8;
-    int h = b.size();
-    int w = c.size();
-    // make tableau
-    int artificial = 0;
-    vector<vector<double> > tableau(h, vector<double>(w + h));  // the tableau
-    vector<double> k = b;
-    repeat (y, h) {
-        if (b[y] >= 0) {
-            copy(whole(a[y]), tableau[y].begin());
-            tableau[y][w + y] = 1;  // slack variable
-        } else {
-            repeat (x, w) {
-                tableau[y][x] = - a[y][x];
-            }
-            tableau[y][w + y] = -1;  // surplus variable
-            k[y] *= -1;
-            artificial += 1;
-        }
-    }
-    vector<int> ix(h);  // labels of rows
-    iota(whole(ix), w);
-    // two-phase method
-    if (artificial) {
-// fprintf(stderr, "artificial %d\n", artificial);
-        vector<double> z(w + h + artificial);  // target function
-        int var = 0;
-        repeat (y, h) {
-            tableau[y].resize(w + h + artificial);
-            if (b[y] < 0) {
-                tableau[y][w + h + var] = 1;
-                repeat (x, w + h) {
-                    z[x] -= tableau[y][x];
-                }
-                ix[y] = w + h + var;
-                ++ var;
-            }
-        }
-        linsolve_tableau(z, tableau, k, ix);
-        repeat (y, h) {
-            assert (ix[y] < w + h);
-            tableau[y].resize(w + h);
-        }
-    }
-    // solve
-    vector<double> z(w + h);  // target function
-    repeat (x, w) z[x] = - c[x];
-    if (artificial) {
-        repeat (y, h) {
-            int x = ix[y];
-            int z_x = z[x];
-            if (z_x) {
-                repeat (j, w + h) {
-                    z[j] -= z_x * tableau[y][j];
-                }
-            }
-        }
-    }
-    linsolve_tableau(z, tableau, k, ix);
-    // finalize
-    vector<double> result(w + h);
-    repeat (y, h) {
-        result[ix[y]] = k[y];
-    }
-    return result;
-}
-
 
 const int knight_dy[] = { -1, -2, -2, -1, 1, 2, 2, 1 };
 const int knight_dx[] = { 2, 1, -1, -2, -2, -1, 1, 2 };
@@ -239,11 +62,6 @@ void flip(int y, int x) {
     }
     knight[y * s + x] = not knight[y * s + x];
 }
-void set_knight(int y, int x, bool state) {
-    if (knight[y * s + x] != state) {
-        flip(y, x);
-    }
-}
 int get_delta(int y, int x) {
     int delta = 0;
     repeat (i, 8) {
@@ -260,51 +78,93 @@ vector<char> solve() {
     double clock_begin = rdtsc();
     int sq_s = s * s;
     current_score = accumulate(board, board + sq_s, 0);
-    constexpr int outer = 12;
-    constexpr int inner = 2;
-    for (int ly = 0; ly < s; ly += outer - inner) {
-        int ry = min(s, ly + outer);
-        int h = ry - ly;
-        for (int lx = 0; lx < s; lx += outer - inner) {
-            int rx = min(s, lx + outer);
-            int w = rx - lx;
-fprintf(stderr, "%d %d do\n", ly + h, lx + w);
-            int hw = h * w;
-            vector<vector<double> > a(3 * hw, vector<double>(2 * hw));
-            vector<double> b(3 * hw);
-            repeat (i, hw) {  // relaxed binary constraints
-                a[i][i] = 1;
-                b[i] = 1;
-            }
-            repeat (y, h) repeat (x, w) {
-                set_knight(ly + y, lx + x, false);
-            }
-            repeat (y, h) repeat (x, w) {  // abs(board - knight) <= delta
-                repeat (i, 8) {
-                    int ny = y + knight_dy[i];
-                    int nx = x + knight_dx[i];
-                    if (not (0 <= ny and ny < h and 0 <= nx and nx < w)) continue;
-                    a[hw + (y * w + x) * 2    ][ny * w + nx] += 1;
-                    a[hw + (y * w + x) * 2 + 1][ny * w + nx] -= 1;
+    const int knight_remaining[] = { 3, 1, 0, 2, 4, 6, 7, 5 };
+    repeat (y, s) repeat (x, s) {
+        int required = 0;
+        repeat (i, 8) {
+            int ny = y + knight_dy[i];
+            int nx = x + knight_dx[i];
+            if (not is_on_field(ny, nx)) continue;
+            if (board[ny * s + nx] - attacked[ny * s + nx] > knight_remaining[i]) required += 1;
+            if (board[ny * s + nx] - attacked[ny * s + nx] <= 0) required -= 1;
+        }
+        if (required >= 1) flip(y, x);
+    }
+    vector<char> result(knight, knight + sq_s);
+    int best_score = current_score;
+    double t = 0;
+    double temp = INFINITY;
+#ifdef VISUALIZE
+int force = 0;
+#endif
+    for (int iteration = 0; ; ++ iteration) {
+        double clock_end = rdtsc();
+        t = (clock_end - clock_begin) / TLE;
+        if (t > 0.98) {
+#ifdef VISUALIZE
+fprintf(stderr, "t = %.2f: iteration = %d: force = %d\n", t, iteration, force);
+#endif
+            break;
+        }
+        temp = (1 - t);
+#ifdef VISUALIZE
+int frc = 0;
+int flp = 0;
+#endif
+        if (iteration & 1) {
+            repeat (y, s) {
+                repeat (x, s) {
+                    int delta = get_delta(y, x);
+                    if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
+#ifdef VISUALIZE
+force += (delta > 0);
+frc += (delta > 0);
+flp += 1;
+#endif
+                        flip(y, x);
+                        if (current_score < best_score) {
+                            copy(knight, knight + sq_s, result.begin());
+                            best_score = current_score;
+#ifdef VISUALIZE
+fprintf(stderr, "t = %.2f: iteration %d: score = %d\n", t, iteration, current_score);
+#endif
+                        }
+                    }
                 }
-                a[hw + (y * w + x) * 2    ][hw + y * w + x] = -1;
-                a[hw + (y * w + x) * 2 + 1][hw + y * w + x] = -1;
-                int j = (ly + y) * s + (lx + x);
-                b[hw + (y * w + x) * 2    ] = + (board[j] - attacked[j]);
-                b[hw + (y * w + x) * 2 + 1] = - (board[j] - attacked[j]);
             }
-            vector<double> c(2 * hw);
-            repeat_from (i, hw, 2 * hw) {  // minimize sum of delta
-                c[i] = -1;
+#ifdef VISUALIZE
+fprintf(stderr, "t = %.2f: iteration %d: score = %d ", t, iteration, current_score);
+fprintf(stderr, "force = %d: flip = %d\n", frc, flp);
+#endif
+        } else {
+            repeat (z, s * s / 100) {
+                int y = uniform_int_distribution<int>(0, s - 1)(gen);
+                int x = uniform_int_distribution<int>(0, s - 1)(gen);
+                int i = uniform_int_distribution<int>(0, 20 - 1)(gen);
+                int ny = y + knight_2dy[i];
+                int nx = x + knight_2dx[i];
+                if (not is_on_field(ny, nx)) continue;
+                if (knight[y * s + x] == knight[ny * s + nx]) continue;
+                int previous_score = current_score;
+                flip(y, x);
+                flip(ny, nx);
+                int delta = - previous_score + current_score;
+                if (delta <= 0 or bernoulli_distribution(exp(- delta / temp))(gen)) {
+                    if (current_score < best_score) {
+                        copy(knight, knight + sq_s, result.begin());
+                        best_score = current_score;
+#ifdef VISUALIZE
+fprintf(stderr, "t = %.2f: iteration %d: score = %d +\n", t, iteration, current_score);
+#endif
+                    }
+                } else {
+                    flip(y, x);
+                    flip(ny, nx);
+                }
             }
-            vector<double> relaxed = linsolve_glpk(a, b, c);
-            repeat (y, h) repeat (x, w) {
-                set_knight(ly + y, lx + x, round(relaxed[y * w + x]));
-            }
-fprintf(stderr, "%d %d done : Score = %d\n", ly + h, lx + w, current_score);
         }
     }
-    return vector<char>(knight, knight + sq_s);
+    return result;
 }
 
 class KnightsAttacks { public: vector<string> placeKnights(vector<string> board); };

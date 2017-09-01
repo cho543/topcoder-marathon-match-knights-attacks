@@ -10,11 +10,11 @@ SEED := ${SEED}
 
 build: a.out
 a.out: tester/main.cpp ${PROBLEM}.hpp
-	${CXX} ${CXXFLAGS} -g -DLOCAL $< -lglpk
+	${CXX} ${CXXFLAGS} -g -DLOCAL $<
 a.out.visualize: tester/main.cpp ${PROBLEM}.hpp
-	${CXX} ${CXXFLAGS} -g -DLOCAL $< -o $@ -DVISUALIZE -lglpk
+	${CXX} ${CXXFLAGS} -g -DLOCAL $< -o $@ -DVISUALIZE
 a.out.debug: tester/main.cpp ${PROBLEM}.hpp
-	${CXX} -std=c++11 -Wall -g -DLOCAL -fsanitize=undefined -D_GLIBCXX_DEBUG $< -o $@ -DVISUALIZE -lglpk
+	${CXX} -std=c++11 -Wall -g -DLOCAL -fsanitize=undefined -D_GLIBCXX_DEBUG $< -o $@ -DVISUALIZE
 tester/KnightsAttacksVis.class: tester/KnightsAttacksVis.java
 	cd tester ; javac KnightsAttacksVis.java
 test: a.out.visualize tester/KnightsAttacksVis.class
