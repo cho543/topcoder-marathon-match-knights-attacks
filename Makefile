@@ -10,7 +10,7 @@ SEED := ${SEED}
 
 build: a.out
 a.out: tester/main.cpp ${PROBLEM}.hpp
-	${CXX} ${CXXFLAGS} -g -DLOCAL $<
+	${CXX} ${CXXFLAGS} -g -DLOCAL $< -lglpk
 a.out.visualize: tester/main.cpp ${PROBLEM}.hpp
 	${CXX} ${CXXFLAGS} -g -DLOCAL $< -o $@ -DVISUALIZE -lglpk
 a.out.debug: tester/main.cpp ${PROBLEM}.hpp

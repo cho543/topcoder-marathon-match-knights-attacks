@@ -1,0 +1,11 @@
+cd tester ; for seed in `seq 10` ; do java KnightsAttacksVis -exec ../a.out -seed $seed ; done
+Score = 25.0
+Score = 1462.0
+Score = 156543.0
+Score = 6842.0
+Score = 7284.0
+Score = 65381.0
+Score = 35787.0
+Score = 101450.0
+Score = 70381.0
+Score = 36857.0
