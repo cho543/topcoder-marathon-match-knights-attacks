@@ -20,7 +20,7 @@ def generate_input(seed, tester='tester.jar', helper=None):
     lines = proc.stdout.decode().splitlines()
     assert lines[-1].startswith('Score = ')
     assert len(lines) == int(lines[0]) + 2
-    return '\n'.join(lines[: -2])
+    return '\n'.join(lines[: -1])
 
 if __name__ == '__main__':
     import argparse
